@@ -14,3 +14,5 @@ __pycache__/
 
 # 虚拟环境文件夹
 venv/
+
+.idea/
