@@ -1,5 +1,5 @@
-# 用前必读
-## 一、 此程序为模块拆分过的一个 B 站视频下载脚本
+# 基于selenium 的 Bilibili 视频下载测试
+## 一、 此项目为一个 B 站视频下载的 python 程序
 ### 1. 终端运行:`pip install -r requirements.txt`
 
 *这个指令会在本项目文件当前使用的 python 环境中运行，用于安装所需要的依赖* 
