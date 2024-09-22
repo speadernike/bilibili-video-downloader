@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from sanitize_filename import sanitize
 
+
 class VideoProcessor:
     """视频处理类，负责视频信息获取、下载和合并"""
 
@@ -27,9 +28,8 @@ class VideoProcessor:
             filename = 'unnamed'
         return filename
 
-    @staticmethod
-    def download_file(url, dest_path, headers, max_retries=5, retry_delay=2):
-        # 下载文件，带有重试机制，确保下载的可靠性
+    def download_file(self, url, dest_path, headers, gui_app, max_retries=5, retry_delay=2):
+        """下载文件，支持中途中断"""
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
         attempt = 0
@@ -40,9 +40,13 @@ class VideoProcessor:
                     r.raise_for_status()
                     with open(dest_path, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
+                            if gui_app.stop_download:  # 检查是否中断下载
+                                print("下载已暂停")
+                                return False  # 下载被暂停，返回 False
+                            if chunk:  # 检查是否有内容，避免空块
+                                f.write(chunk)
                 print(f"下载完成：{os.path.basename(dest_path)}")
-                return
+                return True  # 成功下载
             except requests.exceptions.RequestException as ex:
                 print(f"下载失败：{ex}")
                 attempt += 1
@@ -99,7 +103,7 @@ class VideoProcessor:
             '-c:a', 'copy',   # 直接复制音频流，不重新编码
             '-map', '0:v:0',  # 指定使用第一个输入文件的视频流
             '-map', '1:a:0',  # 指定使用第二个输入文件的音频流
-            '-shortest',      # 以最短的输入文件长度为输出长度
+            '-shortest',      # 以最短地输入文件长度为输出长度
             '-progress', 'pipe:1',  # 输出进度信息到标准输出
             output_file
         ]
@@ -131,7 +135,7 @@ class VideoProcessor:
         # 使用线程启动 FFmpeg 合并，避免阻塞主线程
         threading.Thread(target=run_ffmpeg).start()
 
-    def process_video(self, video_id, headers, progress_queue):
+    def process_video(self, video_id, headers, progress_queue, gui_app):
         try:
             # 使用已登录的浏览器访问视频页面
             self.browser.get(f'https://www.bilibili.com/video/{video_id}/')
@@ -153,9 +157,15 @@ class VideoProcessor:
             video_url = self.get_highest_quality_video(video_info)
             audio_url = video_info['data']['dash']['audio'][0]['base_url']
 
-            # 下载视频和音频文件
-            self.download_file(video_url, os.path.join('download', f"{filename}.mp4"), headers)
-            self.download_file(audio_url, os.path.join('download', f"{filename}.mp3"), headers)
+            # 下载视频文件，传递 gui_app 参数
+            if not self.download_file(video_url, os.path.join('download', f"{filename}.mp4"), headers, gui_app):
+                progress_queue.put("error: 下载已暂停")
+                return  # 下载被暂停，直接退出
+
+            # 下载音频文件，传递 gui_app 参数
+            if not self.download_file(audio_url, os.path.join('download', f"{filename}.mp3"), headers, gui_app):
+                progress_queue.put("error: 下载已暂停")
+                return  # 下载被暂停，直接退出
 
             # 合并音视频文件
             self.merge_audio_video(
