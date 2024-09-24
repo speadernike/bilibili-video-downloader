@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *.so
 
-# macOS系统生成的文件
-.DS_Store
-
 # 环境配置文件，留给用户自己去新建，避免本地测试使用的账号密码因提交而泄露
 .env
 
@@ -20,3 +17,5 @@ venv/
 download
 
 output
+
+.DS_Store
