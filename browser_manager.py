@@ -9,6 +9,7 @@ from selenium.webdriver.chrome.service import Service  # 导入Chrome浏览器�
 from selenium.webdriver.chrome.options import Options  # 导入Chrome浏览器的选项配置
 from webdriver_manager.chrome import ChromeDriverManager  # 导入webdriver_manager，用于自动管理ChromeDriver
 from dotenv import load_dotenv  # 导入dotenv，用于加载环境变量
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 
 # 加载 .env 文件中的环境变量，例如Bilibili的用户名、密码和UID
 load_dotenv()
@@ -86,8 +87,24 @@ def create_browser_instance():
                 print("\n登录成功，开始加载下载界面...")  # 使用换行符确保之前的输出不被覆盖
                 logged_in = True
                 return driver  # 返回已登录的浏览器实例
-        except Exception:
-            pass
+        except NoSuchElementException:
+            # 捕获未找到头像元素的异常，可能由于页面还没加载完成或元素不存在
+            print(f"\n未找到头像元素，可能页面尚未加载完成，继续等待...")
+
+        except TimeoutException:
+            # 捕获页面加载超时的异常
+            print("\n页面加载超时，检查网络连接或Bilibili页面是否正常。")
+            break
+
+        except WebDriverException as e:
+            # 捕获所有与WebDriver相关的错误
+            print(f"\nWebDriver遇到错误: {str(e)}，可能是驱动程序或浏览器的问题。")
+            break
+
+        except Exception as e:
+            # 捕获其他未知错误，并输出异常详细信息
+            print(f"\n发生未知错误: {str(e)}")
+            break
 
     if not logged_in:
         print("\n登录超时，未检测到 UID。")
